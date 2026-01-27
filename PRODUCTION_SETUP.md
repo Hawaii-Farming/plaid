@@ -287,4 +287,4 @@ When moving from sandbox to production:
 
 ---
 
-**IMPORTANT REMINDER**: This repository is currently using in-memory storage for access tokens (`node/index.js`). For production use, you **must** implement proper database storage and security measures. The current implementation is for demonstration purposes only.
+**IMPORTANT REMINDER**: This repository's Node.js backend currently uses in-memory storage for access tokens. For production use with live data, you **must** implement proper database storage and security measures. The current implementation is for demonstration purposes only.
