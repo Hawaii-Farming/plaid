@@ -29,6 +29,13 @@ if (!PLAID_CLIENT_ID || !PLAID_SECRET) {
 }
 
 // In-memory demo storage. In production: store per-user securely.
+// WARNING: This is for demo purposes only! For production use with real data:
+// 1. Store access tokens in an encrypted database (per user)
+// 2. Implement proper authentication and authorization
+// 3. Use a secrets management service for API keys
+// 4. Never store tokens in memory or log them
+// 5. Implement token rotation
+// See PRODUCTION_SETUP.md for complete production security guidance
 let ACCESS_TOKEN = null;
 let ITEM_ID = null;
 

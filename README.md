@@ -6,6 +6,8 @@ Here you'll find full example integration apps using our [**client libraries**][
 
 This Quickstart is designed to show as many products and configurations as possible, including all five officially supported client libraries and multiple Plaid APIs, against a React frontend. 
 
+> **🚀 Ready for Production?** See the [**Production Setup Guide**](PRODUCTION_SETUP.md) for step-by-step instructions on using this repository with real bank accounts and live data. This includes production API access, OAuth setup, security best practices, and compliance requirements.
+
 If you prefer a non-React frontend platform, or a more minimal backend in one language with one endpoint, see the [Tiny Quickstart](https://github.com/plaid/tiny-quickstart), which shows a simpler backend and is available for JavaScript, Next.js, React, and React Native frontends.
 
 For Identity Verification, see the [Identity Verification Quickstart](https://github.com/plaid/idv-quickstart). 
@@ -84,6 +86,15 @@ the dashboard: [https://dashboard.plaid.com/developers/keys](https://dashboard.p
 
 > NOTE: `.env` files are a convenient local development tool. Never run a production application
 > using an environment file with secrets in it.
+
+### For Production / Live Data Setup
+
+If you want to use this repository with **real production data** and live bank accounts, see the comprehensive [**Production Setup Guide**](PRODUCTION_SETUP.md) which covers:
+- Getting production API access and approval
+- Configuring OAuth for major institutions
+- Securing access tokens and credentials
+- Production best practices and compliance
+- Troubleshooting production issues
 
 ## 3. Run the Quickstart
 
