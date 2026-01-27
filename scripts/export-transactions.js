@@ -77,6 +77,17 @@
 
 const fs = require('fs');
 const path = require('path');
+
+// Set up module resolution to find packages in node/node_modules
+const nodeModulesPath = path.join(__dirname, '..', 'node', 'node_modules');
+if (process.env.NODE_PATH) {
+  process.env.NODE_PATH = `${nodeModulesPath}${path.delimiter}${process.env.NODE_PATH}`;
+} else {
+  process.env.NODE_PATH = nodeModulesPath;
+}
+require('module').Module._initPaths();
+
+// Load environment variables
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const {
@@ -85,7 +96,7 @@ const {
   PlaidEnvironments,
 } = require('plaid');
 const ExcelJS = require('exceljs');
-const { Parser } = require('json2csv');
+const { stringify } = require('csv-stringify/sync');
 
 // Configuration from environment
 const PLAID_CLIENT_ID = process.env.PLAID_CLIENT_ID;
@@ -335,23 +346,23 @@ async function exportToXLSX(transactions, filename) {
  * Export transactions to CSV
  */
 function exportToCSV(transactions, filename) {
-  const fields = [
-    'transaction_id',
-    'account_id',
-    'date',
-    'authorized_date',
-    'name',
-    'merchant_name',
-    'amount',
-    'iso_currency_code',
-    'category',
-    'pending',
-    'payment_channel',
-    'transaction_type',
-  ];
-
-  const parser = new Parser({ fields });
-  const csv = parser.parse(transactions);
+  const csv = stringify(transactions, { 
+    header: true,
+    columns: [
+      { key: 'transaction_id', header: 'Transaction ID' },
+      { key: 'account_id', header: 'Account ID' },
+      { key: 'date', header: 'Date' },
+      { key: 'authorized_date', header: 'Authorized Date' },
+      { key: 'name', header: 'Name' },
+      { key: 'merchant_name', header: 'Merchant Name' },
+      { key: 'amount', header: 'Amount' },
+      { key: 'iso_currency_code', header: 'Currency' },
+      { key: 'category', header: 'Category' },
+      { key: 'pending', header: 'Pending' },
+      { key: 'payment_channel', header: 'Payment Channel' },
+      { key: 'transaction_type', header: 'Transaction Type' },
+    ]
+  });
 
   fs.writeFileSync(filename, csv, 'utf8');
   console.log(`Exported to ${filename} (CSV format)`);
