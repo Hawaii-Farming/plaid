@@ -310,6 +310,130 @@ with this line instead:
 After starting up the Quickstart, you can now view it at https://localhost:3000. If you are on Windows, you
 may still get an invalid certificate warning on your browser. If so, click on "advanced" and proceed. Also on Windows, the frontend may still try to load http://localhost:3000 and you may have to access https://localhost:3000 manually.
 
+## Automated Transaction Export
+
+The repository includes a headless script for exporting Plaid transactions to CSV or XLSX format. This is useful for automated reporting, data backup, or integration with other systems.
+
+### Setup
+
+1. **Configure environment variables** in `.env`:
+   ```bash
+   PLAID_CLIENT_ID=your_client_id
+   PLAID_SECRET=your_secret
+   PLAID_ACCESS_TOKEN=your_access_token
+   PLAID_ENV=sandbox  # or 'production'
+   EXPORT_FORMAT=xlsx  # or 'csv'
+   EXPORT_DIR=./exports
+   ```
+
+2. **Install dependencies** (if not already installed):
+   ```bash
+   cd node
+   npm install
+   ```
+
+3. **Get an access token**: Run the quickstart UI, link an account, and copy the access token from your backend logs or in-memory storage. In production, retrieve this from your secure database.
+
+### Usage
+
+Run the export script manually:
+
+```bash
+node scripts/export-transactions.js
+```
+
+The script will:
+- Use Plaid Transactions Sync API for incremental updates
+- Persist a cursor in `scripts/cursor.json` for subsequent runs
+- Export transactions to `./exports/transactions_YYYY-MM-DD.{xlsx|csv}`
+- Support account filtering via `EXPORT_ACCOUNT_IDS` environment variable
+- Log a summary of the export operation
+
+### Scheduling
+
+#### Cron (Linux/Mac)
+
+Add to your crontab (`crontab -e`):
+
+```bash
+0 2 * * * cd /path/to/plaid && node scripts/export-transactions.js >> logs/export.log 2>&1
+```
+
+This runs daily at 2 AM.
+
+#### Task Scheduler (Windows)
+
+1. Open Task Scheduler
+2. Create a new task
+3. Set the action to run `node.exe` with arguments: `C:\path\to\plaid\scripts\export-transactions.js`
+4. Set the working directory to: `C:\path\to\plaid`
+5. Configure the schedule (e.g., daily at 2 AM)
+
+#### GitHub Actions
+
+Create `.github/workflows/export-transactions.yml`:
+
+```yaml
+name: Export Transactions
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM UTC
+  workflow_dispatch:     # Allow manual trigger
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - run: npm install
+        working-directory: ./node
+      - run: node scripts/export-transactions.js
+        env:
+          PLAID_CLIENT_ID: ${{ secrets.PLAID_CLIENT_ID }}
+          PLAID_SECRET: ${{ secrets.PLAID_SECRET }}
+          PLAID_ACCESS_TOKEN: ${{ secrets.PLAID_ACCESS_TOKEN }}
+          PLAID_ENV: production
+      - uses: actions/upload-artifact@v3
+        with:
+          name: transactions-export
+          path: exports/
+```
+
+Configure the secrets in your GitHub repository settings.
+
+### Switching to Production
+
+1. Update your `.env` file:
+   ```bash
+   PLAID_ENV=production
+   PLAID_CLIENT_ID=your_production_client_id
+   PLAID_SECRET=your_production_secret
+   PLAID_ACCESS_TOKEN=your_production_access_token
+   ```
+
+2. Test manually before scheduling:
+   ```bash
+   node scripts/export-transactions.js
+   ```
+
+3. **Important**: Cursors are environment-specific. When switching environments, consider renaming `scripts/cursor.json` to avoid conflicts (e.g., `cursor-sandbox.json`, `cursor-production.json`).
+
+### Configuration Options
+
+All configuration is done via environment variables (see `.env.example`):
+
+- `PLAID_ENV`: Environment to use (`sandbox`, `development`, `production`)
+- `PLAID_CLIENT_ID`: Your Plaid client ID
+- `PLAID_SECRET`: Your Plaid secret key
+- `PLAID_ACCESS_TOKEN`: Access token for the linked account
+- `EXPORT_FORMAT`: Output format (`xlsx` or `csv`, default: `xlsx`)
+- `EXPORT_DIR`: Output directory (default: `./exports`)
+- `EXPORT_ACCOUNT_IDS`: Comma-separated account IDs to filter (optional)
+- `EXPORT_START_DAYS`: Days to look back on first run (default: 30)
+
 [quickstart]: https://plaid.com/docs/quickstart
 [libraries]: https://plaid.com/docs/api/libraries
 [payment-initiation]: https://plaid.com/docs/payment-initiation/

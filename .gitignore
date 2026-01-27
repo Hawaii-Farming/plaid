@@ -55,3 +55,7 @@ docker-compose.local*.yml
 
 #Python virtual nv
 python/venv/*
+
+# Export script
+scripts/cursor.json
+exports/
