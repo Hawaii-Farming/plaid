@@ -1,32 +1,31 @@
 name: Export Transactions to Google Sheets
 
 on:
-  schedule:
-    - cron: "0 2 * * *"   # daily at 2 AM UTC
   workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *"  # daily at 02:00 UTC
 
 jobs:
-  export:
+  export-transactions:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./node   # install deps in node/
+        working-directory: node
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
-          cache: "npm"
-          cache-dependency-path: ./node/package-lock.json
+          node-version: 20
+          cache: npm
+          cache-dependency-path: node/package-lock.json
 
-      - name: Install dependencies
+      - name: Install deps
         run: npm ci
 
-      - name: Run export to Google Sheets
-        run: node ../scripts/export-transactions-to-sheets.js
+      - name: Export transactions to Sheets
         env:
           PLAID_CLIENT_ID: ${{ secrets.PLAID_CLIENT_ID }}
           PLAID_SECRET: ${{ secrets.PLAID_SECRET }}
@@ -34,6 +33,7 @@ jobs:
           PLAID_ENV: ${{ secrets.PLAID_ENV }}
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
           GCP_SA_JSON: ${{ secrets.GCP_SA_JSON }}
-          EXPORT_ACCOUNT_IDS: ${{ secrets.EXPORT_ACCOUNT_IDS }}   # optional
-          EXPORT_START_DAYS: ${{ secrets.EXPORT_START_DAYS }}     # optional
-          SHEETS_RANGE: ${{ secrets.SHEETS_RANGE }}               # optional
+          EXPORT_ACCOUNT_IDS: ${{ secrets.EXPORT_ACCOUNT_IDS }}
+          EXPORT_START_DAYS: ${{ secrets.EXPORT_START_DAYS }}
+          SHEETS_RANGE: ${{ secrets.SHEETS_RANGE }}
+        run: node scripts/export-transactions-to-sheets.js
