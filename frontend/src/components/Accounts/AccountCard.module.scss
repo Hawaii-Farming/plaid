@@ -1,0 +1,142 @@
+.accountCard {
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  transition: all 0.2s ease;
+
+  &.clickable {
+    cursor: pointer;
+
+    &:hover {
+      border-color: #0066ff;
+      box-shadow: 0 4px 12px rgba(0, 102, 255, 0.1);
+      transform: translateY(-2px);
+    }
+  }
+
+  &.selected {
+    border-color: #0066ff;
+    background: #eef2ff;
+  }
+}
+
+.iconWrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a202c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mask {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  color: #718096;
+  white-space: nowrap;
+}
+
+.type {
+  font-size: 12px;
+  color: #a0aec0;
+  margin-bottom: 8px;
+  text-transform: capitalize;
+}
+
+.balances {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.balance {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.label {
+  color: #718096;
+  font-weight: 500;
+}
+
+.amount {
+  color: #1a202c;
+  font-weight: 600;
+}
+
+.checkbox {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+
+  input[type='checkbox'] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+  }
+}
+
+.selectedIcon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #0066ff;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .accountCard {
+    padding: 12px;
+  }
+
+  .iconWrapper {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+
+  .name {
+    font-size: 14px;
+  }
+
+  .mask {
+    font-size: 12px;
+  }
+}

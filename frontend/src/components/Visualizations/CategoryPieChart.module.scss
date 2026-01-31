@@ -1,0 +1,20 @@
+.chartContainer {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.emptyState {
+  background: white;
+  border-radius: 12px;
+  padding: 40px 20px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+  p {
+    color: #718096;
+    font-size: 14px;
+    margin: 0;
+  }
+}
