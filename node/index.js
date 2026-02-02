@@ -9,6 +9,7 @@ const {
   PlaidEnvironments,
 } = require('plaid');
 const express = require('express');
+const path = require('path');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const { stringify } = require('csv-stringify/sync');
@@ -52,9 +53,20 @@ const configuration = new Configuration({
 const client = new PlaidApi(configuration);
 
 const app = express();
-app.use(cors());
+
+// CORS configuration
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || true, // Allow all in production
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+
+// Serve static files from React build
+const frontendBuildPath = path.join(__dirname, '../frontend/build');
+app.use(express.static(frontendBuildPath));
 
 // -----------------------------------------------------------------------------
 // Link token creation
@@ -204,6 +216,58 @@ app.post('/api/transactions/export', async (req, res) => {
   }
 });
 
-app.listen(APP_PORT, () => {
-  console.log(`Hawaii Farming backend running on port ${APP_PORT}`);
+// Scheduled export endpoint (protected by API key)
+app.post('/api/scheduled-export', async (req, res) => {
+  const apiKey = req.headers['x-api-key'];
+  
+  if (apiKey !== process.env.API_KEY) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  if (!ACCESS_TOKEN) {
+    return res.status(400).json({ error: 'No access token set. Please connect a bank account first.' });
+  }
+  
+  try {
+    const { format = 'xlsx', days = 30 } = req.body;
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    const data = await fetchAllTransactions({
+      start_date: startDate.toISOString().split('T')[0],
+      end_date: endDate.toISOString().split('T')[0],
+    });
+    
+    res.json({ 
+      success: true, 
+      transactions: data.transactions.length,
+      exported_at: new Date().toISOString(),
+      start_date: startDate.toISOString().split('T')[0],
+      end_date: endDate.toISOString().split('T')[0]
+    });
+  } catch (err) {
+    console.error('Scheduled export error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Health check for Cloud Run
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    environment: process.env.PLAID_ENV || 'sandbox'
+  });
+});
+
+// Catch-all: serve React index.html for all other routes (SPA routing)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendBuildPath, 'index.html'));
+});
+
+const PORT = process.env.PORT || APP_PORT;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Serving frontend from: ${frontendBuildPath}`);
 });

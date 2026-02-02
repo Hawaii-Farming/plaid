@@ -1,0 +1,12 @@
+{
+  "name": "plaid-service",
+  "version": "1.0.0",
+  "description": "Plaid integration service with React frontend and Node.js backend",
+  "private": true,
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build",
+    "postinstall": "npm run build"
+  },
+  "author": "",
+  "license": "ISC"
+}

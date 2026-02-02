@@ -325,6 +325,78 @@ may still get an invalid certificate warning on your browser. If so, click on "a
 
 The repository includes a headless script for exporting Plaid transactions to CSV or XLSX format. This is useful for automated reporting, data backup, or integration with other systems.
 
+## Cloud Run Deployment (Production)
+
+This setup serves both frontend and backend from a single Cloud Run service.
+
+### Architecture
+
+```
+https://plaid-service-982209115678.us-west1.run.app
+├── / (root) → Serves React Frontend (static files)
+├── /api/* → Backend API endpoints
+├── /oauth-callback → Plaid OAuth redirect handler
+└── PostgreSQL → Persistent token storage
+```
+
+### Prerequisites
+
+1. Google Cloud project with billing enabled
+2. Cloud Run API enabled
+3. Docker installed locally
+4. gcloud CLI installed and authenticated
+
+### Environment Variables
+
+Set these in Cloud Run:
+
+```bash
+PLAID_CLIENT_ID=your_production_client_id
+PLAID_SECRET=your_production_secret
+PLAID_ENV=production
+PLAID_REDIRECT_URI=https://plaid-service-982209115678.us-west1.run.app/oauth-callback
+DATABASE_URL=postgresql://user:pass@host:5432/dbname
+PORT=8080
+API_KEY=your-secure-random-api-key
+```
+
+### Deploy
+
+```bash
+# Make deploy script executable
+chmod +x deploy.sh
+
+# Set your project ID in deploy.sh, then run:
+./deploy.sh
+```
+
+### Access Your App
+
+Visit: `https://plaid-service-982209115678.us-west1.run.app`
+
+1. Click "Connect Bank"
+2. Complete Plaid OAuth flow
+3. View accounts and transactions
+4. Download data manually
+
+### Automated Data Extraction
+
+Set up Cloud Scheduler to call the scheduled export endpoint. See [GCP_SCHEDULER_SETUP.md](GCP_SCHEDULER_SETUP.md) for detailed instructions.
+
+### Plaid Dashboard Configuration
+
+1. Go to https://dashboard.plaid.com/team/api
+2. Add redirect URI: `https://plaid-service-982209115678.us-west1.run.app/oauth-callback`
+3. Save
+
+### Local Development
+
+See [README.DEV.md](README.DEV.md) for instructions on running the application locally.
+
+## Automated Transaction Export
+
+The repository includes a headless script for exporting Plaid transactions to CSV or XLSX format. This is useful for automated reporting, data backup, or integration with other systems.
+
 ### Setup
 
 1. **Configure environment variables** in `.env`:
