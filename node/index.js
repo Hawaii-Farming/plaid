@@ -16,6 +16,8 @@ const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const { stringify } = require('csv-stringify/sync');
 const XLSX = require('xlsx');
+const { appendTransactions } = require('./sheets');
+const { getAccessToken, setAccessToken, getItemId, setItemId, clearTokens } = require('./tokenManager');
 
 const APP_PORT = process.env.APP_PORT || 8000;
 const PLAID_CLIENT_ID = process.env.PLAID_CLIENT_ID;
@@ -30,17 +32,6 @@ if (!PLAID_CLIENT_ID || !PLAID_SECRET) {
   console.error('Missing PLAID_CLIENT_ID or PLAID_SECRET');
   process.exit(1);
 }
-
-// In-memory demo storage. In production: store per-user securely.
-// WARNING: This is for demo purposes only! For production use with real data:
-// 1. Store access tokens in an encrypted database (per user)
-// 2. Implement proper authentication and authorization
-// 3. Use a secrets management service for API keys
-// 4. Never store tokens in memory or log them
-// 5. Implement token rotation
-// See PRODUCTION_SETUP.md for complete production security guidance
-let ACCESS_TOKEN = null;
-let ITEM_ID = null;
 
 const configuration = new Configuration({
   basePath: PlaidEnvironments[PLAID_ENV],
@@ -58,7 +49,7 @@ const app = express();
 
 // CORS configuration
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'https://plaid-service-982209115678.us-west1.run.app', // Restrict to known URL in production
+  origin: process.env.FRONTEND_URL || 'https://plaid-service-982209115678.us-west1.run.app',
   credentials: true,
   optionsSuccessStatus: 200
 };
@@ -69,7 +60,7 @@ app.use(bodyParser.json());
 // Rate limiting for API endpoints
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -78,7 +69,7 @@ const apiLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 
 // Serve static files from React build
-const frontendBuildPath = path.join(__dirname, '../frontend/build');
+const frontendBuildPath = path.join(__dirname, 'frontend/build');
 app.use(express.static(frontendBuildPath));
 
 // -----------------------------------------------------------------------------
@@ -86,7 +77,7 @@ app.use(express.static(frontendBuildPath));
 app.post('/api/create_link_token', async (req, res) => {
   try {
     const configs = {
-      user: { client_user_id: 'demo-user-id' }, // replace with your real user id in prod
+      user: { client_user_id: 'farm-user-id' },
       client_name: 'Hawaii Farming',
       products: PLAID_PRODUCTS,
       country_codes: PLAID_COUNTRY_CODES,
@@ -103,27 +94,55 @@ app.post('/api/create_link_token', async (req, res) => {
   }
 });
 
-// Public token exchange
+// Public token exchange - NOW STORES IN SECRET MANAGER
 app.post('/api/set_access_token', async (req, res) => {
   const { public_token } = req.body;
   if (!public_token) return res.status(400).json({ error: 'public_token is required' });
   try {
     const tokenResponse = await client.itemPublicTokenExchange({ public_token });
-    ACCESS_TOKEN = tokenResponse.data.access_token;
-    ITEM_ID = tokenResponse.data.item_id;
-    res.json({ access_token_set: true, item_id: ITEM_ID });
+    
+    // Store in Secret Manager (persists across restarts)
+    await setAccessToken(tokenResponse.data.access_token);
+    await setItemId(tokenResponse.data.item_id);
+    
+    console.log('✅ Access token stored in Secret Manager');
+    
+    res.json({ 
+      access_token_set: true, 
+      item_id: tokenResponse.data.item_id,
+      message: 'Bank account connected successfully - token stored securely'
+    });
   } catch (err) {
     console.error('publicTokenExchange error', err.response?.data || err.message);
     res.status(500).json({ error: err.response?.data || err.message });
   }
 });
 
+// Get connection status
+app.get('/api/connection-status', async (req, res) => {
+  const accessToken = await getAccessToken();
+  const itemId = await getItemId();
+  
+  res.json({
+    connected: !!accessToken && accessToken !== 'placeholder',
+    item_id: itemId && itemId !== 'placeholder' ? itemId : null,
+  });
+});
+
+// Clear connection (for testing/debugging)
+app.post('/api/clear-connection', async (req, res) => {
+  await clearTokens();
+  res.json({ success: true, message: 'Connection cleared' });
+});
+
 // -----------------------------------------------------------------------------
 // Accounts (with balances)
 app.get('/api/accounts', async (_req, res) => {
-  if (!ACCESS_TOKEN) return res.status(400).json({ error: 'No access token set' });
+  const accessToken = await getAccessToken();
+  if (!accessToken) return res.status(400).json({ error: 'No access token set. Please connect a bank account first.' });
+  
   try {
-    const r = await client.accountsGet({ access_token: ACCESS_TOKEN });
+    const r = await client.accountsGet({ access_token: accessToken });
     res.json(r.data.accounts);
   } catch (err) {
     console.error('accountsGet error', err.response?.data || err.message);
@@ -133,6 +152,11 @@ app.get('/api/accounts', async (_req, res) => {
 
 // Helper: fetch all transactions with pagination
 async function fetchAllTransactions({ start_date, end_date, account_ids }) {
+  const accessToken = await getAccessToken();
+  if (!accessToken) {
+    throw new Error('No access token available. Please connect a bank account first.');
+  }
+  
   const pageSize = 500;
   let offset = 0;
   let all = [];
@@ -140,7 +164,7 @@ async function fetchAllTransactions({ start_date, end_date, account_ids }) {
 
   // first page
   const first = await client.transactionsGet({
-    access_token: ACCESS_TOKEN,
+    access_token: accessToken,
     start_date,
     end_date,
     options: {
@@ -156,7 +180,7 @@ async function fetchAllTransactions({ start_date, end_date, account_ids }) {
   // subsequent pages
   while (all.length < total) {
     const r = await client.transactionsGet({
-      access_token: ACCESS_TOKEN,
+      access_token: accessToken,
       start_date,
       end_date,
       options: {
@@ -175,7 +199,8 @@ async function fetchAllTransactions({ start_date, end_date, account_ids }) {
 // Transactions (JSON)
 app.post('/api/transactions', async (req, res) => {
   const { start_date, end_date, account_ids } = req.body;
-  if (!ACCESS_TOKEN) return res.status(400).json({ error: 'No access token set' });
+  const accessToken = await getAccessToken();
+  if (!accessToken) return res.status(400).json({ error: 'No access token set. Please connect a bank account first.' });
   if (!start_date || !end_date) {
     return res.status(400).json({ error: 'start_date and end_date are required (YYYY-MM-DD)' });
   }
@@ -191,7 +216,8 @@ app.post('/api/transactions', async (req, res) => {
 // Export transactions to CSV or XLSX
 app.post('/api/transactions/export', async (req, res) => {
   const { start_date, end_date, account_ids, format = 'csv' } = req.body;
-  if (!ACCESS_TOKEN) return res.status(400).json({ error: 'No access token set' });
+  const accessToken = await getAccessToken();
+  if (!accessToken) return res.status(400).json({ error: 'No access token set. Please connect a bank account first.' });
   if (!start_date || !end_date) {
     return res.status(400).json({ error: 'start_date and end_date are required (YYYY-MM-DD)' });
   }
@@ -229,6 +255,32 @@ app.post('/api/transactions/export', async (req, res) => {
   }
 });
 
+// Export to Google Sheets
+app.post('/api/export-to-sheets', async (req, res) => {
+  const { start_date, end_date, account_ids } = req.body;
+  const accessToken = await getAccessToken();
+  if (!accessToken) return res.status(400).json({ error: 'No access token set. Please connect a bank account first.' });
+  if (!start_date || !end_date) {
+    return res.status(400).json({ error: 'start_date and end_date are required (YYYY-MM-DD)' });
+  }
+
+  try {
+    const { transactions } = await fetchAllTransactions({ start_date, end_date, account_ids });
+    const result = await appendTransactions(transactions);
+    
+    res.json({
+      success: true,
+      total_transactions: transactions.length,
+      added: result.added,
+      skipped: result.skipped,
+      message: `Successfully exported ${result.added} new transactions to Google Sheets`,
+    });
+  } catch (err) {
+    console.error('export-to-sheets error', err.response?.data || err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Scheduled export endpoint (protected by API key)
 app.post('/api/scheduled-export', async (req, res) => {
   const apiKey = req.headers['x-api-key'];
@@ -241,12 +293,15 @@ app.post('/api/scheduled-export', async (req, res) => {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   
-  if (!ACCESS_TOKEN) {
-    return res.status(400).json({ error: 'Service not initialized. Access token must be set before using scheduled exports. Please connect a bank account through the UI first.' });
+  const accessToken = await getAccessToken();
+  if (!accessToken) {
+    return res.status(400).json({ 
+      error: 'Service not initialized. Access token must be set before using scheduled exports. Please connect a bank account through the UI first.' 
+    });
   }
   
   try {
-    const { format = 'xlsx', days = 30 } = req.body;
+    const { days = 30, exportToSheets = true } = req.body;
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
@@ -256,9 +311,16 @@ app.post('/api/scheduled-export', async (req, res) => {
       end_date: endDate.toISOString().split('T')[0],
     });
     
+    let sheetsResult = null;
+    if (exportToSheets) {
+      sheetsResult = await appendTransactions(data.transactions);
+    }
+    
     res.json({ 
       success: true, 
       transactions: data.transactions.length,
+      sheets_added: sheetsResult?.added || 0,
+      sheets_skipped: sheetsResult?.skipped || 0,
       exported_at: new Date().toISOString(),
       start_date: startDate.toISOString().split('T')[0],
       end_date: endDate.toISOString().split('T')[0]
@@ -284,7 +346,17 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || APP_PORT;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Serving frontend from: ${frontendBuildPath}`);
+  
+  // Load tokens from Secret Manager on startup
+  const accessToken = await getAccessToken();
+  const itemId = await getItemId();
+  
+  if (accessToken && accessToken !== 'placeholder') {
+    console.log('✅ Bank account connected - ready for exports');
+  } else {
+    console.log('⚠️  No bank account connected - please connect through the UI');
+  }
 });

@@ -203,7 +203,7 @@ export default function App() {
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 24 }}>Hawaii Farming — Plaid Demo</h1>
+            <h1 style={{ margin: 0, fontSize: 24 }}>Hawaii Farming — Plaid</h1>
             <div style={{ color: '#6b7280', fontSize: 14 }}>
               Connect, view balances, fetch transactions, and export CSV/XLSX.
             </div>
