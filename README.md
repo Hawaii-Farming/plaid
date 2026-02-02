@@ -321,6 +321,80 @@ with this line instead:
 After starting up the Quickstart, you can now view it at https://localhost:3000. If you are on Windows, you
 may still get an invalid certificate warning on your browser. If so, click on "advanced" and proceed. Also on Windows, the frontend may still try to load http://localhost:3000 and you may have to access https://localhost:3000 manually.
 
+## Production Database Setup
+
+The Node.js backend supports persistent token storage using PostgreSQL, enabling production deployments with:
+- **Token persistence** across server restarts
+- **Multiple token management** for different users/accounts
+- **Automated data extraction** via GCP jobs without re-authentication
+- **Production-ready** token lifecycle management
+
+### Quick Start with Docker Compose
+
+For local development with database persistence:
+
+```bash
+# Start PostgreSQL and the Node.js backend
+docker-compose up postgres node
+
+# The database will be automatically initialized with the schema
+# Access the database directly if needed:
+docker exec -it plaid-postgres-1 psql -U plaid_user -d plaid_production
+```
+
+### Environment Configuration
+
+Add to your `node/.env` file:
+
+```bash
+# Database Configuration (choose one option)
+
+# Option 1: Connection string (recommended for production)
+DATABASE_URL=postgresql://plaid_user:password@localhost:5432/plaid_production
+
+# Option 2: Individual components (useful for development)
+# DB_HOST=localhost
+# DB_PORT=5432
+# DB_NAME=plaid_production
+# DB_USER=plaid_user
+# DB_PASSWORD=plaid_password
+# DB_SSL=false  # Set to 'true' for production
+
+# API Key for token endpoints (generate a secure random string)
+API_KEY=your_secure_api_key_here
+```
+
+### New API Endpoints
+
+The database integration adds new endpoints for token management:
+
+- `GET /api/health/db` - Check database connection status
+- `GET /api/tokens` - List all active tokens (requires API key)
+- `GET /api/tokens/active` - Get the currently active token for data extraction (requires API key)
+
+Example usage:
+
+```bash
+# Check database health
+curl http://localhost:8000/api/health/db
+
+# Get active token (for GCP job integration)
+curl -H "X-API-Key: your_api_key" http://localhost:8000/api/tokens/active
+```
+
+### Complete Setup Guides
+
+- **[PRODUCTION_DATABASE_SETUP.md](PRODUCTION_DATABASE_SETUP.md)** - Complete guide for PostgreSQL setup, GCP Cloud SQL configuration, security best practices, and migration
+- **[GCP_JOB_SETUP.md](GCP_JOB_SETUP.md)** - Guide for setting up automated data extraction using Cloud Functions, Cloud Run Jobs, and Cloud Scheduler
+
+### Backward Compatibility
+
+The database integration maintains full backward compatibility:
+- Existing frontend works without changes
+- In-memory storage still available if database not configured
+- All existing API endpoints continue to work
+- On startup, the most recent token is loaded into memory
+
 ## Automated Transaction Export
 
 The repository includes a headless script for exporting Plaid transactions to CSV or XLSX format. This is useful for automated reporting, data backup, or integration with other systems.
