@@ -7,11 +7,21 @@
 
 const { Pool } = require('pg');
 
+// Validate port number
+function validatePort(portStr) {
+  const port = parseInt(portStr || '5432', 10);
+  if (isNaN(port) || port < 1 || port > 65535) {
+    console.error(`Invalid DB_PORT: ${portStr}. Using default port 5432.`);
+    return 5432;
+  }
+  return port;
+}
+
 // Database configuration from environment variables
 const dbConfig = {
   connectionString: process.env.DATABASE_URL,
   host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432', 10),
+  port: validatePort(process.env.DB_PORT),
   database: process.env.DB_NAME || 'plaid_production',
   user: process.env.DB_USER || 'plaid_user',
   password: process.env.DB_PASSWORD || 'plaid_password',

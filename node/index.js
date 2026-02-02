@@ -195,7 +195,8 @@ app.get('/api/tokens/active', verifyApiKey, async (_req, res) => {
 app.post('/api/create_link_token', async (req, res) => {
   try {
     const configs = {
-      user: { client_user_id: 'demo-user-id' }, // replace with your real user id in prod
+      // TODO: Replace 'demo-user-id' with actual user ID from authentication system in production
+      user: { client_user_id: 'demo-user-id' }, // FIXME: Hardcoded user ID
       client_name: 'Hawaii Farming',
       products: PLAID_PRODUCTS,
       country_codes: PLAID_COUNTRY_CODES,
@@ -238,8 +239,9 @@ app.post('/api/set_access_token', async (req, res) => {
         const accounts = accountsData.data.accounts;
         
         // Save token with metadata to database
+        // TODO: Replace 'demo-user-id' with actual user ID from authentication system in production
         await db.saveToken(
-          'demo-user-id', // In production, use actual user ID from authentication
+          'demo-user-id', // FIXME: Hardcoded user ID - implement proper authentication
           accessToken,
           itemId,
           institutionName,
