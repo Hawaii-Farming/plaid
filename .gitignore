@@ -59,3 +59,7 @@ python/venv/*
 # Export script
 scripts/cursor.json
 exports/
+
+# Build artifacts
+frontend/build
+package-lock.json
