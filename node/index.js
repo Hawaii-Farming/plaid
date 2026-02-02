@@ -22,6 +22,7 @@ const PLAID_PRODUCTS = (process.env.PLAID_PRODUCTS || Products.Transactions).spl
 const PLAID_COUNTRY_CODES = (process.env.PLAID_COUNTRY_CODES || 'US').split(',');
 const PLAID_REDIRECT_URI = process.env.PLAID_REDIRECT_URI || '';
 const PLAID_ANDROID_PACKAGE_NAME = process.env.PLAID_ANDROID_PACKAGE_NAME || '';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 if (!PLAID_CLIENT_ID || !PLAID_SECRET) {
   console.error('Missing PLAID_CLIENT_ID or PLAID_SECRET');
@@ -52,7 +53,15 @@ const configuration = new Configuration({
 const client = new PlaidApi(configuration);
 
 const app = express();
-app.use(cors());
+
+// CORS configuration to allow requests from the frontend
+const corsOptions = {
+  origin: FRONTEND_URL,
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
+
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
