@@ -393,10 +393,6 @@ Set up Cloud Scheduler to call the scheduled export endpoint. See [GCP_SCHEDULER
 
 See [README.DEV.md](README.DEV.md) for instructions on running the application locally.
 
-## Automated Transaction Export
-
-The repository includes a headless script for exporting Plaid transactions to CSV or XLSX format. This is useful for automated reporting, data backup, or integration with other systems.
-
 ### Setup
 
 1. **Configure environment variables** in `.env`:

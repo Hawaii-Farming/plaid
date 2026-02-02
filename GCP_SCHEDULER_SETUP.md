@@ -29,6 +29,8 @@ gcloud run services update plaid-service \
 
 ### Daily Export at 2 AM
 
+**Important**: Replace `YOUR_API_KEY` in the commands below with the actual API key you generated above.
+
 ```bash
 gcloud scheduler jobs create http plaid-daily-export \
   --location=us-west1 \

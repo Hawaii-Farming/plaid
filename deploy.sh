@@ -1,6 +1,18 @@
 #!/bin/bash
 set -e
 
+# Get project ID from gcloud config or use environment variable
+PROJECT_ID=${GCP_PROJECT_ID:-$(gcloud config get-value project 2>/dev/null)}
+
+if [ -z "$PROJECT_ID" ]; then
+  echo "❌ Error: GCP_PROJECT_ID environment variable not set and no gcloud project configured"
+  echo "Set it with: export GCP_PROJECT_ID=your-project-id"
+  echo "Or configure gcloud: gcloud config set project your-project-id"
+  exit 1
+fi
+
+echo "📦 Using project: $PROJECT_ID"
+
 echo "🏗️  Building frontend..."
 cd frontend
 npm install
@@ -8,14 +20,14 @@ npm run build
 cd ..
 
 echo "🐳 Building Docker image..."
-docker build -t gcr.io/YOUR_PROJECT_ID/plaid-service:latest .
+docker build -t gcr.io/$PROJECT_ID/plaid-service:latest .
 
 echo "📤 Pushing to Google Container Registry..."
-docker push gcr.io/YOUR_PROJECT_ID/plaid-service:latest
+docker push gcr.io/$PROJECT_ID/plaid-service:latest
 
 echo "🚀 Deploying to Cloud Run..."
 gcloud run deploy plaid-service \
-  --image gcr.io/YOUR_PROJECT_ID/plaid-service:latest \
+  --image gcr.io/$PROJECT_ID/plaid-service:latest \
   --region us-west1 \
   --platform managed \
   --allow-unauthenticated \

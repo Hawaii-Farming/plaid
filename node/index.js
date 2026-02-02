@@ -12,6 +12,7 @@ const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const crypto = require('crypto');
 const { stringify } = require('csv-stringify/sync');
 const XLSX = require('xlsx');
 
@@ -56,7 +57,7 @@ const app = express();
 
 // CORS configuration
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || true, // Allow all in production
+  origin: process.env.FRONTEND_URL || 'https://plaid-service-982209115678.us-west1.run.app', // Restrict to known URL in production
   credentials: true,
   optionsSuccessStatus: 200
 };
@@ -219,13 +220,17 @@ app.post('/api/transactions/export', async (req, res) => {
 // Scheduled export endpoint (protected by API key)
 app.post('/api/scheduled-export', async (req, res) => {
   const apiKey = req.headers['x-api-key'];
+  const expectedKey = process.env.API_KEY;
   
-  if (apiKey !== process.env.API_KEY) {
+  // Use constant-time comparison to prevent timing attacks
+  if (!apiKey || !expectedKey || 
+      apiKey.length !== expectedKey.length ||
+      !crypto.timingSafeEqual(Buffer.from(apiKey), Buffer.from(expectedKey))) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   
   if (!ACCESS_TOKEN) {
-    return res.status(400).json({ error: 'No access token set. Please connect a bank account first.' });
+    return res.status(400).json({ error: 'Service not initialized. Access token must be set before using scheduled exports. Please connect a bank account through the UI first.' });
   }
   
   try {
