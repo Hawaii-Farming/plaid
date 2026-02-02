@@ -13,6 +13,7 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
 const { stringify } = require('csv-stringify/sync');
 const XLSX = require('xlsx');
 
@@ -64,6 +65,17 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+
+// Rate limiting for API endpoints
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiting to API routes
+app.use('/api/', apiLimiter);
 
 // Serve static files from React build
 const frontendBuildPath = path.join(__dirname, '../frontend/build');
