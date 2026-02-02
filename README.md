@@ -321,6 +321,124 @@ with this line instead:
 After starting up the Quickstart, you can now view it at https://localhost:3000. If you are on Windows, you
 may still get an invalid certificate warning on your browser. If so, click on "advanced" and proceed. Also on Windows, the frontend may still try to load http://localhost:3000 and you may have to access https://localhost:3000 manually.
 
+## Cloud Run Deployment Configuration
+
+### Backend (Cloud Run)
+
+Your backend is deployed at: `https://plaid-service-982209115678.us-west1.run.app`
+
+#### Environment Variables
+
+Configure the following environment variables in Google Cloud Run:
+
+```bash
+# Plaid API Configuration
+PLAID_CLIENT_ID=your_client_id_here
+PLAID_SECRET=your_secret_here
+PLAID_ENV=production
+PLAID_PRODUCTS=auth,transactions
+
+# OAuth Redirect Configuration
+# For localhost frontend development:
+PLAID_REDIRECT_URI=http://localhost:3000/oauth-callback
+# For production frontend:
+# PLAID_REDIRECT_URI=https://your-frontend-domain.com/oauth-callback
+
+# CORS Configuration
+FRONTEND_URL=http://localhost:3000
+# For production frontend:
+# FRONTEND_URL=https://your-frontend-domain.com
+```
+
+**Setting environment variables via gcloud CLI**:
+
+```bash
+gcloud run services update plaid-service \
+  --region us-west1 \
+  --update-env-vars PLAID_CLIENT_ID=your_client_id \
+  --update-env-vars PLAID_SECRET=your_secret \
+  --update-env-vars PLAID_ENV=production \
+  --update-env-vars PLAID_REDIRECT_URI=http://localhost:3000/oauth-callback \
+  --update-env-vars FRONTEND_URL=http://localhost:3000 \
+  --update-env-vars PLAID_PRODUCTS=auth,transactions
+```
+
+**Or via Google Cloud Console**:
+1. Go to [Cloud Run Console](https://console.cloud.google.com/run)
+2. Select your service: `plaid-service`
+3. Click "Edit & Deploy New Revision"
+4. Under "Variables & Secrets" tab, add the environment variables listed above
+5. Click "Deploy"
+
+### Frontend Configuration
+
+To connect your local frontend to the Cloud Run backend:
+
+1. **Create `frontend/.env`** (this file is gitignored):
+   ```env
+   REACT_APP_API_URL=https://plaid-service-982209115678.us-west1.run.app
+   ```
+
+2. **Start the frontend**:
+   ```bash
+   cd frontend
+   npm install
+   npm start
+   ```
+
+The frontend will now run on `http://localhost:3000` and connect to your Cloud Run backend.
+
+### Switching Between Local and Cloud Run Backend
+
+You can easily switch between a local backend and Cloud Run backend by changing the `REACT_APP_API_URL` in `frontend/.env`:
+
+- **Cloud Run backend**: `REACT_APP_API_URL=https://plaid-service-982209115678.us-west1.run.app`
+- **Local backend**: `REACT_APP_API_URL=http://localhost:8000`
+
+See `frontend/.env.example` for the template.
+
+### OAuth Configuration
+
+For OAuth institutions (Chase, Bank of America, etc.), see the comprehensive [**Plaid OAuth Setup Guide**](PLAID_OAUTH_SETUP.md) which covers:
+- Registering redirect URIs in Plaid Dashboard
+- Configuring OAuth institutions
+- Testing the OAuth flow
+- Troubleshooting common OAuth issues
+
+**Quick OAuth Setup**:
+1. Add `http://localhost:3000/oauth-callback` to [Allowed redirect URIs](https://dashboard.plaid.com/team/api) in Plaid Dashboard
+2. Set `PLAID_REDIRECT_URI=http://localhost:3000/oauth-callback` in Cloud Run environment variables
+3. Complete OAuth registration for desired institutions in [US OAuth Institutions](https://dashboard.plaid.com/settings/compliance/us-oauth-institutions)
+
+### Security Considerations
+
+- **Never commit production credentials** to version control
+- Use Google Secret Manager for sensitive data in production
+- Ensure `frontend/.env` is in `.gitignore` (it is by default)
+- Use HTTPS for production deployments
+- Regularly rotate API secrets
+- See [**Production Setup Guide**](PRODUCTION_SETUP.md) for complete security best practices
+
+### Troubleshooting Cloud Run Connection
+
+#### CORS Errors
+If you see CORS errors in the browser console:
+- Verify `FRONTEND_URL` is set correctly in Cloud Run environment variables
+- Ensure it matches your frontend URL exactly (e.g., `http://localhost:3000` not `http://localhost:3000/`)
+- Redeploy the Cloud Run service after changing environment variables
+
+#### API Connection Errors
+If the frontend can't connect to the backend:
+- Verify the Cloud Run service URL is correct in `frontend/.env`
+- Check Cloud Run service is running: `gcloud run services describe plaid-service --region us-west1`
+- Verify the service allows unauthenticated requests (for development)
+- Check Cloud Run logs: `gcloud run services logs read plaid-service --region us-west1`
+
+#### OAuth Redirect Issues
+- Ensure redirect URI is registered in Plaid Dashboard
+- Verify `PLAID_REDIRECT_URI` matches the registered URI exactly
+- See [PLAID_OAUTH_SETUP.md](PLAID_OAUTH_SETUP.md) for detailed troubleshooting
+
 ## Automated Transaction Export
 
 The repository includes a headless script for exporting Plaid transactions to CSV or XLSX format. This is useful for automated reporting, data backup, or integration with other systems.

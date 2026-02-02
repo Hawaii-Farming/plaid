@@ -26,10 +26,13 @@ type Transaction = {
 
 type ApiOptions = RequestInit & { json?: any };
 
+// API base URL from environment variable or default to localhost
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
 // Helper that accepts `json` and stringifies it
 const api = async <T = any>(path: string, opts: ApiOptions = {}): Promise<T> => {
   const { json, headers, ...rest } = opts;
-  const res = await fetch(`http://localhost:8000${path}`, {
+  const res = await fetch(`${API_URL}${path}`, {
     headers: { 'Content-Type': 'application/json', ...(headers || {}) },
     ...rest,
     body: json !== undefined ? JSON.stringify(json) : rest.body,
@@ -143,7 +146,7 @@ export default function App() {
     async (format: 'csv' | 'xlsx') => {
       setStatus(`Exporting ${format}...`);
       try {
-        const res = await fetch('http://localhost:8000/api/transactions/export', {
+        const res = await fetch(`${API_URL}/api/transactions/export`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
